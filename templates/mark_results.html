@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2>Mark Results - Cycle #{{ cycle.number }}, Day {{ accumulator.day_number }}</h2>
+
+<form method="POST">
+    <table style="width: 100%; border-collapse: collapse; text-align: left; margin-top: 20px;">
+        <thead>
+            <tr style="background: #333; color: #fff;">
+                <th style="padding: 8px;">#</th>
+                <th style="padding: 8px;">Match</th>
+                <th style="padding: 8px;">Bet Type</th>
+                <th style="padding: 8px;">Odds</th>
+                <th style="padding: 8px;">Result</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for bet in all_bets %}
+            <tr style="border-bottom: 1px solid #ccc; {% if bet.is_excluded %}background: #e9ecef;{% endif %}">
+                <td style="padding: 8px;">{{ loop.index }} {% if bet.is_excluded %}<span style="color: #6c757d; font-size: 12px;">(Excluded)</span>{% endif %}</td>
+                <td style="padding: 8px;">{{ bet.match_desc }}</td>
+                <td style="padding: 8px;">{{ bet.bet_type }}</td>
+                <td style="padding: 8px;">{{ bet.odds }}</td>
+                <td style="padding: 8px;">
+                    <select name="result_{{ bet.id }}" style="padding: 5px;">
+                        <option value="pending" {% if bet.status == 'pending' %}selected{% endif %}>Pending</option>
+                        <option value="won" {% if bet.status == 'won' %}selected{% endif %}>Won</option>
+                        <option value="lost" {% if bet.status == 'lost' %}selected{% endif %}>Lost</option>
+                        <option value="void" {% if bet.status == 'void' %}selected{% endif %}>Void</option>
+                    </select>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    
+    <div style="margin-top: 20px;">
+        <button type="submit" style="padding: 10px 20px; background: #007bff; color: white; border: none; cursor: pointer;">Submit Results</button>
+        <a href="{{ url_for('dashboard') }}" style="padding: 10px 20px; background: #6c757d; color: #fff; text-decoration: none; margin-left: 10px;">Cancel</a>
+    </div>
+</form>
+{% endblock %}

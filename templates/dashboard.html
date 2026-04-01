@@ -1,0 +1,243 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div style="display: flex; justify-content: space-between; align-items: center;">
+    <h2>Dashboard</h2>
+    <div>
+        <strong>Cycle: #{{ cycle.number }}</strong> | 
+        <strong>Day: {{ accumulator.day_number }}</strong>
+        
+        {% if not accumulator.is_finalized %}
+        <form method="POST" action="{{ url_for('finalize_accumulator', acc_id=accumulator.id) }}" style="display:inline; margin-left: 15px;" onsubmit="return confirm('Locking this ticket will prevent further adds or deletes. Are you sure?');">
+            <button type="submit" style="background:#ffc107; color:#333; font-weight:bold; border:2px solid #e0a800; border-radius:5px; padding:5px 10px; cursor:pointer;">Lock Ticket</button>
+        </form>
+        {% else %}
+        <span style="display:inline-block; margin-left:15px; background:#28a745; color:#fff; font-weight:bold; border-radius:5px; padding:5px 10px; margin-right:5px;">Ticket Locked</span>
+        <form method="POST" action="{{ url_for('unlock_accumulator', acc_id=accumulator.id) }}" style="display:inline;">
+            <button type="submit" style="background:#dc3545; color:#fff; font-weight:normal; border:none; border-radius:3px; padding:4px 8px; cursor:pointer; font-size:12px;">Unlock</button>
+        </form>
+        {% endif %}
+    </div>
+</div>
+
+<div style="margin-top: 15px;">
+    <strong>Combined Progress: {{ "%.1f"|format(progress) }}%</strong>
+    <div style="background: #e9ecef; border-radius: 5px; margin-top: 5px; height: 15px; width: 100%; overflow: hidden;">
+        <div style="background: #28a745; height: 100%; width: {{ progress }}%;"></div>
+    </div>
+</div>
+
+<div style="display: flex; flex-wrap: wrap; margin-top: 20px;">
+    <!-- Active Accumulator -->
+    <div style="flex: 3; min-width: 600px; padding-right: 20px;">
+        <h3>Active Accumulator</h3>
+        <table style="width: 100%; border-collapse: collapse; text-align: left;">
+            <thead>
+                <tr style="background: #333; color: #fff;">
+                    <th style="padding: 8px;">#</th>
+                    <th style="padding: 8px;">Source</th>
+                    <th style="padding: 8px;">Match</th>
+                    <th style="padding: 8px;">Bet Type</th>
+                    <th style="padding: 8px;">Odds</th>
+                    <th style="padding: 8px;">Threshold</th>
+                    <th style="padding: 8px;">Status</th>
+                    <th style="padding: 8px;">Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for bet in bets %}
+                <tr style="border-bottom: 1px solid #ccc; background: {{ '#fff3cd' if bet.is_rolled_over else '#d4edda' }};">
+                    <td style="padding: 8px;">{{ loop.index }}</td>
+                    <td style="padding: 8px; font-weight: bold;">
+                        {% if bet.is_rolled_over %}
+                        <span style="color: #856404;">Rolled Over</span>
+                        {% else %}
+                        <span style="color: #155724;">New</span>
+                        {% endif %}
+                    </td>
+                    <td style="padding: 8px;">
+                        {% if bet.match_desc.startswith('Awaiting') %}
+                            <div style="color: #856404; font-weight: bold;">{{ bet.match_desc }}</div>
+                            <form method="POST" action="{{ url_for('sync_fixture', bet_id=bet.id) }}" style="display:inline; margin-top:5px;">
+                                <button type="submit" style="background:#17a2b8; color:#fff; border:none; padding:3px 6px; cursor:pointer; border-radius:3px; font-size:11px;">Sync API</button>
+                            </form>
+                            <button onclick="document.getElementById('edit_fixture_{{bet.id}}').style.display='block'" style="background:#6c757d; color:#fff; border:none; padding:3px 6px; cursor:pointer; border-radius:3px; font-size:11px;">Manual Edit</button>
+                            <form id="edit_fixture_{{bet.id}}" method="POST" action="{{ url_for('edit_fixture', bet_id=bet.id) }}" style="display:none; margin-top:5px;">
+                                <input type="text" name="new_match" placeholder="New Match" style="width:100%; padding:2px; font-size:11px; margin-bottom:2px;" required>
+                                <input type="datetime-local" name="new_date" style="width:100%; padding:2px; font-size:11px; margin-bottom:2px;">
+                                <button type="submit" style="background:#28a745; color:#fff; border:none; padding:3px 6px; cursor:pointer; border-radius:3px; font-size:11px;">Save</button>
+                            </form>
+                        {% else %}
+                            {{ bet.match_desc }} <br><small>{{ bet.sport }} | {{ bet.country }} | {{ bet.league }}</small>
+                            {% if bet.match_date %}<br><small style="color: #6c757d;">{{ bet.match_date | replace('T', ' ') }}</small>{% endif %}
+                        {% endif %}
+                    </td>
+                    <td style="padding: 8px;">{{ bet.bet_type }}</td>
+                    <td style="padding: 8px;">
+                        {% if bet.status == 'pending' %}
+                        <form method="POST" action="{{ url_for('update_odds', bet_id=bet.id) }}" style="display:flex; align-items:center;">
+                            <input type="number" step="0.01" name="new_odds" value="{{ bet.odds }}" style="width: 70px; margin-right: 5px; padding: 2px;">
+                            <button type="submit" style="background:#007bff; color:#fff; border:none; padding:3px 8px; cursor:pointer; border-radius:3px; font-size:12px;">Save</button>
+                        </form>
+                        {% else %}
+                        {{ bet.odds }}
+                        {% endif %}
+                    </td>
+                    <td style="padding: 8px;">{{ bet.threshold }}</td>
+                    <td style="padding: 8px;">
+                        {{ bet.status.title() }}
+                        {% if accumulator.is_finalized and bet.status == 'pending' %}
+                        <br><button onclick="document.getElementById('quick_update_modal_{{bet.id}}').style.display='block'" style="font-size: 10px; padding: 2px 4px; border-radius: 3px; cursor: pointer; margin-top:4px;">Quick Update</button>
+                        
+                        <!-- Quick Update Modal -->
+                        <div id="quick_update_modal_{{bet.id}}" style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); background:#fff; border:1px solid #ccc; padding:20px; box-shadow:0 0 10px rgba(0,0,0,0.5); z-index:1000;">
+                            <h4>Update Status for {{ bet.home_team if bet.home_team else bet.match_desc }}</h4>
+                            <form method="POST" action="{{ url_for('quick_update', bet_id=bet.id) }}">
+                                <select name="status" style="width:100%; padding:5px; margin-bottom:10px;">
+                                    <option value="won">Won</option>
+                                    <option value="lost">Lost</option>
+                                    <option value="pending">Pending</option>
+                                </select>
+                                <br>
+                                <button type="submit" style="background:#28a745; color:white; border:none; padding:5px 10px; border-radius:3px;">Save</button>
+                                <button type="button" onclick="document.getElementById('quick_update_modal_{{bet.id}}').style.display='none'" style="background:#ccc; color:#333; border:none; padding:5px 10px; border-radius:3px; margin-left:5px;">Cancel</button>
+                            </form>
+                        </div>
+                        {% endif %}
+                    </td>
+                    <td style="padding: 8px;">
+                        {% if bet.status == 'pending' and not accumulator.is_finalized %}
+                            {% if not bet.is_rolled_over %}
+                            <form method="POST" action="{{ url_for('delete_bet', bet_id=bet.id) }}" style="display:inline;" onsubmit="return confirm('Are you sure you want to delete this bet?');">
+                                <button type="submit" style="background: #dc3545; color: #fff; border: none; padding: 4px 8px; cursor: pointer; border-radius: 4px;">Delete</button>
+                            </form>
+                            {% elif bet.is_rolled_over and not bet.is_excluded %}
+                            <form method="POST" action="{{ url_for('exclude_bet', bet_id=bet.id) }}" style="display:inline;">
+                                <button type="submit" style="background: #ffc107; color: #333; border: none; padding: 4px 8px; cursor: pointer; border-radius: 4px;">Do Not Include</button>
+                            </form>
+                            {% endif %}
+                        {% endif %}
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="8" style="padding: 15px; text-align: center;">No bets added yet. <a href="{{ url_for('add_bet') }}">Add a new bet</a></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        
+        <div style="margin-top: 20px;">
+            {% if not accumulator.is_finalized %}
+            <a href="{{ url_for('add_bet') }}" style="padding: 10px 15px; background: #007bff; color: white; text-decoration: none; border-radius: 4px;">Add New Bet</a>
+            {% endif %}
+            <a href="/mark_results" style="padding: 10px 15px; background: #17a2b8; color: white; text-decoration: none; border-radius: 4px; margin-left: 10px;">Mark Results</a>
+        </div>
+        
+        {% if excluded_bets %}
+        <style>
+            @keyframes softPulse {
+                0% { box-shadow: 0 0 0 0 rgba(40, 167, 69, 0.4); }
+                70% { box-shadow: 0 0 0 10px rgba(40, 167, 69, 0); }
+                100% { box-shadow: 0 0 0 0 rgba(40, 167, 69, 0); }
+            }
+            .glow-row {
+                background: linear-gradient(90deg, #fff8b0 0%, #fff3cd 100%) !important;
+                border-left: 4px solid #dc3545 !important;
+            }
+            .glow-btn {
+                background: #28a745 !important;
+                color: #fff !important;
+                font-weight: bold !important;
+                border: 2px solid #218838 !important;
+                padding: 6px 12px !important;
+                animation: softPulse 2s infinite;
+            }
+        </style>
+        <h3 style="margin-top: 40px; color: #856404;">Stashed / Excluded Bets</h3>
+        <table style="width: 100%; border-collapse: collapse; text-align: left;">
+            <thead>
+                <tr style="background: #e9ecef; color: #333;">
+                    <th style="padding: 8px;">#</th>
+                    <th style="padding: 8px;">Match</th>
+                    <th style="padding: 8px;">Bet Type</th>
+                    <th style="padding: 8px;">Odds</th>
+                    <th style="padding: 8px;">Threshold</th>
+                    <th style="padding: 8px;">Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for bet in excluded_bets %}
+                <tr style="border-bottom: 1px solid #ccc; background: #fff3cd;" class="{% if bet.is_playing_today %}glow-row{% endif %}">
+                    <td style="padding: 8px;">{{ loop.index }}</td>
+                    <td style="padding: 8px;">
+                        {% if bet.is_playing_today %}
+                            <div style="background: #dc3545; color: white; display: inline-block; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: bold; margin-bottom: 4px; letter-spacing: 0.5px;">MATCHING TODAY</div><br>
+                        {% endif %}
+                        {% if bet.match_desc.startswith('Awaiting') %}
+                            <div style="color: #856404; font-weight: bold;">{{ bet.match_desc }}</div>
+                            <form method="POST" action="{{ url_for('sync_fixture', bet_id=bet.id) }}" style="display:inline; margin-top:5px;">
+                                <button type="submit" style="background:#17a2b8; color:#fff; border:none; padding:3px 6px; cursor:pointer; border-radius:3px; font-size:11px;">Sync API</button>
+                            </form>
+                            <button onclick="document.getElementById('edit_fixture_stash_{{bet.id}}').style.display='block'" style="background:#6c757d; color:#fff; border:none; padding:3px 6px; cursor:pointer; border-radius:3px; font-size:11px;">Manual Edit</button>
+                            <form id="edit_fixture_stash_{{bet.id}}" method="POST" action="{{ url_for('edit_fixture', bet_id=bet.id) }}" style="display:none; margin-top:5px;">
+                                <input type="text" name="new_match" placeholder="New Match" style="width:100%; padding:2px; font-size:11px; margin-bottom:2px;" required>
+                                <input type="datetime-local" name="new_date" style="width:100%; padding:2px; font-size:11px; margin-bottom:2px;">
+                                <button type="submit" style="background:#28a745; color:#fff; border:none; padding:3px 6px; cursor:pointer; border-radius:3px; font-size:11px;">Save</button>
+                            </form>
+                        {% else %}
+                            {{ bet.match_desc }} <br><small>{{ bet.sport }} | {{ bet.country }} | {{ bet.league }}</small>
+                            {% if bet.match_date %}<br><small style="color: #6c757d;">{{ bet.match_date | replace('T', ' ') }}</small>{% endif %}
+                        {% endif %}
+                    </td>
+                    <td style="padding: 8px;">{{ bet.bet_type }}</td>
+                    <td style="padding: 8px;">{{ bet.odds }}</td>
+                    <td style="padding: 8px;">{{ bet.threshold }}</td>
+                    <td style="padding: 8px;">
+                        {% if bet.status == 'pending' %}
+                        <form method="POST" action="{{ url_for('include_bet', bet_id=bet.id) }}" style="display:inline;">
+                            <button type="submit" class="{% if bet.is_playing_today %}glow-btn{% endif %}" style="background: #28a745; color: #fff; border: none; padding: 4px 8px; cursor: pointer; border-radius: 4px; margin-right: 5px;">{% if bet.is_playing_today %}Include For Today{% else %}Include{% endif %}</button>
+                        </form>
+                        <form method="POST" action="{{ url_for('quick_result', bet_id=bet.id, result='won') }}" style="display:inline;">
+                            <button type="submit" style="background: #007bff; color: #fff; border: none; padding: 4px 8px; cursor: pointer; border-radius: 4px; margin-right: 5px;">Win</button>
+                        </form>
+                        <form method="POST" action="{{ url_for('quick_result', bet_id=bet.id, result='lost') }}" style="display:inline;">
+                            <button type="submit" style="background: #dc3545; color: #fff; border: none; padding: 4px 8px; cursor: pointer; border-radius: 4px;">Loss</button>
+                        </form>
+                        <form method="POST" action="{{ url_for('delete_bet', bet_id=bet.id) }}" style="display:inline;" onsubmit="return confirm('Are you sure you want to permanently delete this stashed bet?');">
+                            <button type="submit" style="background: #343a40; color: #fff; border: none; padding: 4px 8px; cursor: pointer; border-radius: 4px; margin-left: 5px;">Drop</button>
+                        </form>
+                        {% else %}
+                        <strong style="color: {% if bet.status == 'won' %}#28a745{% else %}#dc3545{% endif %};">{{ bet.status.title() }}</strong>
+                        <form method="POST" action="{{ url_for('quick_result', bet_id=bet.id, result='pending') }}" style="display:inline; margin-left: 10px;">
+                            <button type="submit" style="background: #6c757d; color: #fff; border: none; padding: 2px 6px; cursor: pointer; border-radius: 3px; font-size: 11px;">Undo</button>
+                        </form>
+                        <form method="POST" action="{{ url_for('delete_bet', bet_id=bet.id) }}" style="display:inline;" onsubmit="return confirm('Are you sure you want to permanently delete this stashed bet?');">
+                            <button type="submit" style="background: #343a40; color: #fff; border: none; padding: 2px 6px; cursor: pointer; border-radius: 3px; font-size: 11px; margin-left: 5px;">Drop</button>
+                        </form>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% endif %}
+    </div>
+    
+    <!-- Odds Table and Stats -->
+    <div style="flex: 1; min-width: 300px;">
+        <div style="background: #f9f9f9; padding: 15px; border: 1px solid #ddd; margin-bottom: 20px;">
+            <h3>Odds</h3>
+            <p style="font-size: 24px; font-weight: bold;">Combined: {{ "%.2f"|format(combined_odds) }}</p>
+        </div>
+        
+        <div style="background: #f9f9f9; padding: 15px; border: 1px solid #ddd;">
+            <h3>Overall Stats</h3>
+            <p><strong>Total Cycles:</strong> {{ stats.total_cycles }}</p>
+            <p><strong>Cycles Won:</strong> {{ stats.cycles_won }}</p>
+            <p><strong>Total Legs:</strong> {{ stats.total_legs }}</p>
+            <p><strong>Win Rate:</strong> {{ "%.1f"|format(win_rate) }}%</p>
+        </div>
+    </div>
+</div>
+{% endblock %}

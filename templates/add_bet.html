@@ -1,0 +1,145 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2>Add New Bet</h2>
+
+<div style="max-width: 600px; margin-top: 20px;">
+    <form method="POST" action="{{ url_for('add_bet') }}">
+        <div style="margin-bottom: 15px;">
+            <label style="display: block;">Sport</label>
+            <input type="text" name="sport" id="sport" list="sport_list" style="width: 100%; padding: 8px;" placeholder="Select or type Sport" required autocomplete="off">
+            <datalist id="sport_list"></datalist>
+        </div>
+        <div style="margin-bottom: 15px;">
+            <label style="display: block;">Country</label>
+            <input type="text" name="country" id="country" list="country_list" style="width: 100%; padding: 8px;" placeholder="Select or type Country" required autocomplete="off">
+            <datalist id="country_list"></datalist>
+        </div>
+        <div style="margin-bottom: 15px;">
+            <label style="display: block;">League</label>
+            <input type="text" name="league" id="league" list="league_list" style="width: 100%; padding: 8px;" placeholder="Select or type League" required autocomplete="off">
+            <datalist id="league_list"></datalist>
+        </div>
+        <div style="margin-bottom: 15px; display: flex; gap: 10px;">
+            <div style="flex: 1;">
+                <label style="display: block;">Home Team</label>
+                <input type="text" name="home_team" style="width: 100%; padding: 8px;" placeholder="e.g. Arsenal" required>
+            </div>
+            <div style="flex: 1;">
+                <label style="display: block;">Away Team</label>
+                <input type="text" name="away_team" style="width: 100%; padding: 8px;" placeholder="e.g. Chelsea" required>
+            </div>
+        </div>
+        <div style="margin-bottom: 15px;">
+            <label style="display: block;">Tracked Entity (For Rollovers)</label>
+            <select name="tracked_entity" style="width: 100%; padding: 8px;" required>
+                <option value="none" selected>None (Do not track streaks)</option>
+                <option value="home">Home Team</option>
+                <option value="away">Away Team</option>
+                <option value="both">Both Teams (Splits on loss)</option>
+            </select>
+        </div>
+        <div style="margin-bottom: 15px;">
+            <label style="display: block;">Bet Type</label>
+            <input type="text" name="bet_type" id="bet_type" list="bet_type_list" style="width: 100%; padding: 8px;" placeholder="Select or type Bet Type" required autocomplete="off">
+            <datalist id="bet_type_list"></datalist>
+        </div>
+        <div style="margin-bottom: 15px;">
+            <label style="display: block;">Odds</label>
+            <input type="number" step="0.01" name="odds" style="width: 100%; padding: 8px;" required>
+        </div>
+        <div style="margin-bottom: 15px;">
+            <label style="display: block;">Threshold</label>
+            <input type="text" name="threshold" style="width: 100%; padding: 8px;" placeholder="e.g. 4 games missed" required>
+        </div>
+        <div style="margin-bottom: 15px;">
+            <label style="display: block;">Match Date & Time</label>
+            <input type="datetime-local" name="match_date" style="width: 100%; padding: 8px;">
+        </div>
+        <div style="margin-bottom: 15px;">
+            <label style="display: block;">Notes</label>
+            <textarea name="notes" style="width: 100%; padding: 8px;" rows="3"></textarea>
+        </div>
+        <div>
+            <button type="submit" style="padding: 10px 20px; background: #28a745; color: #fff; border: none; cursor: pointer;">Save Bet</button>
+            <a href="{{ url_for('dashboard') }}" style="padding: 10px 20px; background: #6c757d; color: #fff; text-decoration: none; margin-left: 10px;">Cancel</a>
+        </div>
+    </form>
+</div>
+
+<script>
+    const dbData = {{ dropdown_data | tojson | safe }};
+    
+    const sportInput = document.getElementById('sport');
+    const sportList = document.getElementById('sport_list');
+    
+    const countryInput = document.getElementById('country');
+    const countryList = document.getElementById('country_list');
+    
+    const leagueInput = document.getElementById('league');
+    const leagueList = document.getElementById('league_list');
+    
+    const betTypeInput = document.getElementById('bet_type');
+    const betTypeList = document.getElementById('bet_type_list');
+    
+    // Populate Sports datalist
+    const sports = dbData.filter(d => d.category === 'sport');
+    sports.forEach(s => {
+        let opt = document.createElement('option');
+        opt.value = s.value;
+        opt.dataset.id = s.id;
+        sportList.appendChild(opt);
+    });
+    
+    sportInput.addEventListener('change', function() {
+        countryList.innerHTML = '';
+        leagueList.innerHTML = '';
+        betTypeList.innerHTML = '';
+        
+        let parentId = null;
+        for (let i = 0; i < sportList.options.length; i++) {
+            if (sportList.options[i].value.toLowerCase() === this.value.toLowerCase()) {
+                parentId = sportList.options[i].dataset.id;
+                break;
+            }
+        }
+        
+        if (parentId) {
+            const countries = dbData.filter(d => d.category === 'country' && d.parent_id == parentId);
+            countries.forEach(c => {
+                let opt = document.createElement('option');
+                opt.value = c.value;
+                opt.dataset.id = c.id;
+                countryList.appendChild(opt);
+            });
+            
+            const betTypes = dbData.filter(d => d.category === 'bet_type' && d.parent_id == parentId);
+            betTypes.forEach(b => {
+                let opt = document.createElement('option');
+                opt.value = b.value;
+                betTypeList.appendChild(opt);
+            });
+        }
+    });
+
+    countryInput.addEventListener('change', function() {
+        leagueList.innerHTML = '';
+        let parentId = null;
+        for (let i = 0; i < countryList.options.length; i++) {
+            if (countryList.options[i].value.toLowerCase() === this.value.toLowerCase()) {
+                parentId = countryList.options[i].dataset.id;
+                break;
+            }
+        }
+        
+        if (parentId) {
+            const leagues = dbData.filter(d => d.category === 'league' && d.parent_id == parentId);
+            leagues.forEach(l => {
+                let opt = document.createElement('option');
+                opt.value = l.value;
+                leagueList.appendChild(opt);
+            });
+        }
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2>Statistics</h2>
+
+<div style="display: flex; flex-wrap: wrap; margin-top: 20px;">
+    <!-- Win Rates By Sport -->
+    <div style="flex: 1; min-width: 300px; padding-right: 20px;">
+        <h3>By Sport</h3>
+        <table style="width: 100%; border-collapse: collapse; text-align: left;">
+            <thead>
+                <tr style="background: #eee;">
+                    <th style="padding: 8px;">Sport</th>
+                    <th style="padding: 8px;">W</th>
+                    <th style="padding: 8px;">L</th>
+                    <th style="padding: 8px;">Win %</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for sport, data in sport_stats.items() %}
+                {% set total = data.w + data.l %}
+                <tr style="border-bottom: 1px solid #ccc;">
+                    <td style="padding: 8px;">{{ sport }}</td>
+                    <td style="padding: 8px;">{{ data.w }}</td>
+                    <td style="padding: 8px;">{{ data.l }}</td>
+                    <td style="padding: 8px;">{{ "%.1f"|format(data.w / total * 100) if total > 0 else 0 }}%</td>
+                </tr>
+                {% else %}
+                <tr><td colspan="4">No completed bets yet.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Win Rates By Bet Type -->
+    <div style="flex: 1; min-width: 300px;">
+        <h3>By Bet Type</h3>
+        <table style="width: 100%; border-collapse: collapse; text-align: left;">
+            <thead>
+                <tr style="background: #eee;">
+                    <th style="padding: 8px;">Bet Type</th>
+                    <th style="padding: 8px;">W</th>
+                    <th style="padding: 8px;">L</th>
+                    <th style="padding: 8px;">Win %</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for btype, data in bet_type_stats.items() %}
+                {% set total = data.w + data.l %}
+                <tr style="border-bottom: 1px solid #ccc;">
+                    <td style="padding: 8px;">{{ btype }}</td>
+                    <td style="padding: 8px;">{{ data.w }}</td>
+                    <td style="padding: 8px;">{{ data.l }}</td>
+                    <td style="padding: 8px;">{{ "%.1f"|format(data.w / total * 100) if total > 0 else 0 }}%</td>
+                </tr>
+                {% else %}
+                <tr><td colspan="4">No completed bets yet.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Chart -->
+<div style="margin-top: 40px; max-width: 800px;">
+    <h3>Daily/Sport Performance</h3>
+    <canvas id="performanceChart"></canvas>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    const ctx = document.getElementById('performanceChart').getContext('2d');
+    const performanceChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: {{ chart_labels | tojson }},
+            datasets: [
+                {
+                    label: 'Wins',
+                    data: {{ chart_wins | tojson }},
+                    backgroundColor: 'rgba(40, 167, 69, 0.6)',
+                    borderColor: 'rgba(40, 167, 69, 1)',
+                    borderWidth: 1
+                },
+                {
+                    label: 'Losses',
+                    data: {{ chart_losses | tojson }},
+                    backgroundColor: 'rgba(220, 53, 69, 0.6)',
+                    borderColor: 'rgba(220, 53, 69, 1)',
+                    borderWidth: 1
+                }
+            ]
+        },
+        options: {
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+</script>
+{% endblock %}

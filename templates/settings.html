@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2>Settings</h2>
+
+<div style="display: flex; flex-wrap: wrap;">
+
+    <!-- Left Column: Manage Dropdowns -->
+    <div style="flex: 1; min-width: 300px; padding-right: 20px;">
+        <div style="margin-top: 20px; padding: 20px; border: 1px solid #ccc;">
+            <h3>Synchronized Dropdown Mapping</h3>
+            <p style="font-size: 13px; color: #555;">Declare a full mapping chain explicitly. (You can also type new options directly on the Add Bet page!)</p>
+            <form method="POST" action="">
+                <input type="hidden" name="action" value="add_dropdown_chain">
+                
+                <div style="margin-bottom: 10px;">
+                    <label>Sport</label>
+                    <input type="text" name="sport" list="sport_list_settings" style="width: 100%; padding: 5px;" required autocomplete="off">
+                </div>
+                
+                <div style="margin-bottom: 10px;">
+                    <label>Country</label>
+                    <input type="text" name="country" list="country_list_settings" style="width: 100%; padding: 5px;" required autocomplete="off">
+                </div>
+                
+                <div style="margin-bottom: 10px;">
+                    <label>League</label>
+                    <input type="text" name="league" list="league_list_settings" style="width: 100%; padding: 5px;" required autocomplete="off">
+                </div>
+
+                <div style="margin-bottom: 10px;">
+                    <label>Bet Type</label>
+                    <input type="text" name="bet_type" list="bet_type_list_settings" style="width: 100%; padding: 5px;" required autocomplete="off">
+                </div>
+                
+                <datalist id="sport_list_settings">
+                    {% for d in dropdowns if d.category == 'sport' %}
+                    <option value="{{ d.value }}"></option>
+                    {% endfor %}
+                </datalist>
+                <datalist id="country_list_settings">
+                    {% for d in dropdowns if d.category == 'country' %}
+                    <option value="{{ d.value }}"></option>
+                    {% endfor %}
+                </datalist>
+                <datalist id="league_list_settings">
+                    {% for d in dropdowns if d.category == 'league' %}
+                    <option value="{{ d.value }}"></option>
+                    {% endfor %}
+                </datalist>
+                <datalist id="bet_type_list_settings">
+                    {% for d in dropdowns if d.category == 'bet_type' %}
+                    <option value="{{ d.value }}"></option>
+                    {% endfor %}
+                </datalist>
+                
+                <button type="submit" style="padding: 10px 20px; background: #007bff; color: white; border: none;">Map Custom Chain</button>
+            </form>
+        </div>
+        
+        <div style="margin-top: 20px; padding: 20px; border: 1px solid #ccc;">
+            <h3>Export Data</h3>
+            <p>Download your complete betting history as a CSV file.</p>
+            <a href="{{ url_for('export_csv') }}" style="display: inline-block; padding: 10px 20px; background: #17a2b8; color: white; text-decoration: none;">Export CSV</a>
+        </div>
+    </div>
+
+    <!-- Right Column: Settings & Password -->
+    <div style="flex: 1; min-width: 300px;">
+        <div style="margin-top: 20px; padding: 20px; border: 1px solid #ccc;">
+            <h3>Accumulator Size Settings</h3>
+            <form method="POST" action="">
+                <input type="hidden" name="action" value="update_size">
+                <div style="margin-bottom: 10px;">
+                    <label>Min Legs</label>
+                    <input type="number" name="min_legs" value="{{ settings.min_legs }}" style="width: 100%; padding: 5px;" required>
+                </div>
+                <div style="margin-bottom: 10px;">
+                    <label>Max Legs</label>
+                    <input type="number" name="max_legs" value="{{ settings.max_legs }}" style="width: 100%; padding: 5px;" required>
+                </div>
+                <button type="submit" style="padding: 10px 20px; background: #28a745; color: white; border: none;">Save Acca Settings</button>
+            </form>
+        </div>
+        
+        <div style="margin-top: 20px; padding: 20px; border: 1px solid #ccc;">
+            <h3>Change Password</h3>
+            <form method="POST" action="">
+                {{ form.hidden_tag() }}
+                <div style="margin-bottom: 15px;">
+                    {{ form.old_password.label(style="display: block;") }}
+                    {{ form.old_password(style="width: 100%; padding: 8px;") }}
+                </div>
+                <div style="margin-bottom: 15px;">
+                    {{ form.new_password.label(style="display: block;") }}
+                    {{ form.new_password(style="width: 100%; padding: 8px;") }}
+                </div>
+                <div style="margin-bottom: 15px;">
+                    {{ form.confirm_password.label(style="display: block;") }}
+                    {{ form.confirm_password(style="width: 100%; padding: 8px;") }}
+                </div>
+                <div>
+                    {{ form.submit(style="padding: 10px 20px; background: #333; color: #fff; border: none; cursor: pointer;") }}
+                </div>
+            </form>
+        </div>
+    </div>
+
+</div>
+{% endblock %}
