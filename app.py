@@ -692,5 +692,17 @@ def stats():
                            chart_wins=chart_wins,
                            chart_losses=chart_losses)
 
+@app.route("/shutdown")
+@login_required
+def shutdown():
+    import os
+    import threading
+    def kill_server():
+        import time
+        time.sleep(1)
+        os._exit(0)
+    threading.Thread(target=kill_server).start()
+    return "<div style='font-family: sans-serif; text-align: center; margin-top: 50px;'><h2>The Betting Tracker Server has been completely stopped.</h2><p>You can safely close this browser tab.</p></div>"
+
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
